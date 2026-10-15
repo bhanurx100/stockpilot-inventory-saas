@@ -9,7 +9,7 @@
 
 A full-stack warehouse and stock inventory management system built with Next.js, React, Prisma, and MongoDB. It helps store owners, suppliers, and clients manage products, orders, invoices, warehouses, and support tickets with role-based access, analytics dashboards, QR codes, payments (Stripe), shipping (Shippo), and email (Brevo). This README is written for learning, reuse, and deployment—with project structure, API reference, environment setup, and usage walkthroughs.
 
-- **Live Demo:** [https://stockly-inventory.vercel.app/](https://stockly-inventory.vercel.app/)
+
 
 ![Screenshot 2026-03-07 at 12 15 24](https://github.com/user-attachments/assets/67518003-8e10-4c71-b682-911506173cdf)
 ![Screenshot 2026-03-07 at 12 16 27](https://github.com/user-attachments/assets/f00d8441-4c1c-467d-b9fa-f5505a48feb0)
@@ -58,15 +58,42 @@ A full-stack warehouse and stock inventory management system built with Next.js,
 
 ---
 
-## Project Overview
+## Project Overview & Product Positioning
 
-Stockly is a **role-based inventory and order management platform**. It supports three roles:
+**StockPilot** is an intelligent inventory and business operations platform built as a full-stack Next.js 16 + Expo React Native monorepo.
 
-- **Admin (store owner):** Full access to products, categories, suppliers, warehouses, orders, invoices, analytics, user management, support tickets, and client/supplier portal views.
-- **Supplier:** Own products, orders containing their products, revenue, and support tickets.
-- **Client:** Browse catalog, place orders, view invoices, pay via Stripe, and open support tickets.
-
-The app uses **Next.js 16 App Router**, **Prisma** with **MongoDB**, **JWT** auth, **TanStack Query** for server state, **shadcn/ui** + **Tailwind** for UI, and optional integrations: **Stripe** (payments), **Shippo** (shipping), **Brevo** (email), **ImageKit** (images), **Upstash Redis** (cache), **Sentry** (monitoring), and **OpenRouter** (AI insights). All features are designed so you can run the core app with minimal env vars and add integrations as needed.
+> ### ⚠️ Product Maturity Notice
+> **Engineering Complete ≠ Market Complete.**
+>
+> StockPilot passes **all 22 internal engineering gates** plus a documentation audit that fails
+> the build if any feature claim stops matching the code (`npm run audit:docs`). The feature
+> scores below are **audited, not asserted** — see [`docs/FEATURE-MATRIX.md`](docs/FEATURE-MATRIX.md).
+>
+> **What is genuinely complete:** stock integrity and the immutable movement ledger, procurement
+> and dock receiving, the connected order timeline, the operational Action Center, replenishment
+> with one-click draft POs, the GST computation engine, the GSTIN/HSN validation layer, role-scoped
+> authorization, observability, and CI/CD.
+>
+> **What is genuinely incomplete — and is tracked, not hidden:**
+> - **Mobile offline writes** (`P8.2`) — reads degrade correctly, but mutations are not queued. A scan in a dead zone is lost rather than replayed. See `TD-04`.
+> - **Native bottom sheets** (`TD-03`) and mobile scan reticle/audio polish.
+> - **Distributor onboarding wizard** (`P9.2.4`) and the **controlled pilot** (`P9.2.5`) — not started.
+> - **Multi-unit conversion** (`GAP-08`) — no carton-to-piece factor is modelled.
+>
+> **Externally capped:** GST *compliance* needs a chartered accountant's sign-off (`RISK-03`); live
+> payment/push/carrier credentials have never run in CI (`RISK-04`).
+>
+> **Canonical Product & Engineering Documentation:**
+> - 📊 [`docs/FEATURE-MATRIX.md`](docs/FEATURE-MATRIX.md) — **audited canonical matrix**; every citation resolves to a real file or gate.
+> - 📈 [`docs/FEATURE-MATURITY-MATRIX.md`](docs/FEATURE-MATURITY-MATRIX.md) — generated maturity view (do not hand-edit).
+> - 🔍 [`docs/KNOWN-GAPS.md`](docs/KNOWN-GAPS.md) — open gaps, technical debt, and the risk register.
+> - 📄 [`docs/PRD.md`](docs/PRD.md) — Product requirements, positioning, Indian distributor ICP.
+> - 🎯 [`docs/PRODUCT-SCOPE.md`](docs/PRODUCT-SCOPE.md) — Launch critical (P0) vs paid release (P1) vs out-of-scope.
+> - 🗂️ [`docs/FEATURE-CATALOG.md`](docs/FEATURE-CATALOG.md) — Atomic hierarchy of all capabilities.
+> - 🗺️ [`docs/PHASE-ROADMAP.md`](docs/PHASE-ROADMAP.md) — Dependency-ordered programme (Phase 0–9).
+> - 🚪 [`docs/RELEASE-GATES.md`](docs/RELEASE-GATES.md) — Objective readiness criteria and release blockers.
+> - 📜 [`docs/DECISION-LOG.md`](docs/DECISION-LOG.md) — Architecture decision records (ADRs).
+> - 📋 [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/RUNBOOK.md`](docs/RUNBOOK.md) · [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ---
 
@@ -133,7 +160,7 @@ The app uses **Next.js 16 App Router**, **Prisma** with **MongoDB**, **JWT** aut
 ```bash
 # Clone the repository
 git clone <your-repo-url>
-cd stock-inventory
+cd stockpilot-inventory-saas
 
 # Install dependencies
 npm install
@@ -159,6 +186,88 @@ Default scripts:
 | Build  | `npm run build` | Prisma generate + production build |
 | Start  | `npm run start` | Production server                  |
 | Lint   | `npm run lint`  | ESLint                             |
+| Types  | `npm run typecheck` | `tsc --noEmit` over `apps/web` |
+| Seed (Phase 3) | `npm run seed` | Deterministic demo dataset — **dry-run** (counts + fingerprint); add `--write` to insert, `--reset --write` to replace an existing seed |
+| Phase 2 tests | `npm run test:phase2` | Operations-workspace gate (485 checks: token scheme parity, shortcut registry integrity, role-gated shortcuts, palette routes/dark-time detail navigation, help-dialog wiring, dual-scheme native theme) |
+| Phase 3 tests | `npm run test:phase3` | Stock/money/seed invariant suite (138 checks: reserve→cancel→release, no-negative fuzz, transfer conservation, quantity parsing, money drift, seed determinism + ledger reconciliation, strict parsing helpers) + procurement/GRN suite (82 checks: PO math + lifecycle, GRN line match/overage/damage-quarantine, backorder split, 3-way match, collision-safe inbound numbering + route regression guards) |
+| Phase 3.5 tests | `npm run test:phase35` | Webhook/QStash/internal-call hardening suite (78 checks: unsigned Shippo rejection, `Bearer undefined` impossible, idempotency dedupe, replay window, pre-shipment-only cancel-order CAS) |
+| **Phase 6.5 tests** | `npm run test:phase65` | Mobile/PWA suite (159 checks: role-visibility matrix, deep-link resolution + role-forbidden redirect, QR payload interop, PWA installability + icons + service worker, 44px/16px/safe-area baselines, no-WebView, keychain sessions) |
+| **Phase 8 tests** | `npm run test:phase8` | Warehouse domain gate (105 checks: delete guard blockers, stock-health roll-up, per-warehouse transfer report, idempotency/conservation, Zod validation, static route guards) |
+| **Phase 9 tests** | `npm run test:phase9` | Order/invoice domain gate (73 checks: pre-shipment cancel, draft/packed transitions, tracking validation, pagination helpers, invoice transitions + cent math, fulfillment-warehouse availability) |
+| **Phase 10 tests** | `npm run test:phase10` | Payments/shipping/privacy gate (74 checks: refund idempotency, Shippo sender/carrier guards, review access, security headers, GDPR planner, image magic-byte validation) |
+| **Phase 11 tests** | `npm run test:phase11` | Supplier + client gate (118 checks: onboarding/verification transitions, delete guard, performance score, rating recalculation, marketplace filter/sort/paginate, comparison, idempotency) |
+| **Phase 11.5 tests** | `npm run test:phase115` | AI engine gate (151 checks: tool registry, role-filtered context, unauthorized probes, deterministic calc, proposal preview→confirm→execute→audit lifecycle) |
+| **Phase 12 tests** | `npm run test:phase12` | Analytics + forecasting gate (146 checks: 4 forecast methods, trends, stockout/reorder/confidence, anomalies, horizons, snapshots, exports) |
+| **Phase 13 tests** | `npm run test:phase13` | Notifications + support gate (39 checks: ticket transitions, access/reply matrix, assignee notification, in-app filters, queue verification, aria-live) |
+| **Phase 14 tests** | `npm run test:phase14` | Control Center gate (73 checks: 12-area health matrix, demo actions, 16 edge-case scenarios, production 404 gate, admin/audit/rate-limit wiring, UI states) |
+| **Phase 15 tests** | `npm run test:phase15` | Testing-depth gate (42 checks: per-route auth gate, Zod on mutating routes, no `as any` in domain code, audit/ledger wiring, rate limits, gate + script coverage) |
+| **Phase 16 tests** | `npm run test:phase16` | Security gate (57 checks: headers, fail-closed secrets, cookie policy, output projection, webhook trust, upload safety, privacy/retention, override pins, admin-gated ops routes) |
+| **Control Center** | `/control-center` | Dev/demo dashboard: health matrix, seed status, feature checks, edge cases, cache clear, outbox. Admin-only; returns 404 in production |
+| **Phase 17 tests** | `npm run test:phase17` | Performance gate (70 checks: declared budgets, budget evaluation, pagination on every collection, bounded page sizes, N+1 sweep, perf tracking, query config) |
+| **Phase 18 tests** | `npm run test:phase18` | Observability gate (69 checks: log redaction, failure classification, outbox retry/dead-letter policy, event catalog, handlers, worker, alerts) |
+| **Phase 19 tests** | `npm run test:phase19` | Deploy gate (75 checks: CI matrix, multi-stage non-root Docker + healthcheck, compose stack, secret handling, runbooks) |
+| **Phase 20 tests** | `npm run test:phase20` | Final-verify gate (100 checks: every gate on disk + in CI + in `verify:all`, matrix all-green, no unchecked items, runbooks) |
+| **Verify everything** | `npm run verify:all` | typecheck → lint → all 21 gates → OpenAPI check → seed → production build |
+| **Outbox worker** | `npm run outbox:worker [-- --once]` | Drains the transactional outbox (notifications, emails, cache invalidation) |
+| PWA icons | `npm run generate:pwa-icons` | Regenerate manifest icon set (192/512/maskable/apple-touch/favicon) |
+| Mobile dev | `cd apps/mobile && npm run dev` | Expo dev server (iOS / Android / web); set `EXPO_PUBLIC_API_URL` |
+| Qty migration | `npm run script:normalize-qty [-- --apply]` | Report/convert legacy quantity fields to int32 |
+| Money migration | `npm run script:normalize-money [-- --apply]` | Report/round stored money fields to 2 decimal places |
+
+> Phase 3 (Data) tooling and decisions are documented in [`docs/PHASE-3.md`](docs/PHASE-3.md);
+> Phase 3.5 (API hardening) in [`docs/PHASE-3.5.md`](docs/PHASE-3.5.md);
+> **Phase 6.5 (native mobile + PWA) in [`docs/PHASE-6.5.md`](docs/PHASE-6.5.md)**.
+
+### Mobile & PWA (Phase 6.5)
+
+StockPilot ships a **native Expo app** (`apps/mobile`) — not a WebView — plus an installable
+PWA on the web app (manifest, maskable icons, service worker with an offline page, iOS
+Add-to-Home and Android install UX). Both consume the same API and the same shared
+`@stockpilot/*` packages, so inventory, money and validation rules have one implementation.
+
+Role-gated screens (ROADMAP §2) are driven by one shared matrix
+(`packages/types/src/role-visibility.ts`) used by the native tab bar and the web navigation.
+
+
+---
+
+## Demo accounts & data (dev only)
+
+Load the deterministic demo dataset, then verify it:
+
+```bash
+npm run seed                      # dry-run: counts + fingerprint, writes nothing
+npm run seed -- --write           # first load
+npm run seed -- --reset --write   # reload (only ever deletes rows the generator created)
+npm run script:check-demo-data    # per-role data scope + status mixes + referential integrity
+```
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@stockpilot.dev` | `StockPilot!2026` |
+| Warehouse | `warehouse@stockpilot.dev` | `Warehouse!2026` |
+| Supplier | `supplier@stockpilot.dev` | `Supplier!2026` |
+| Client | `client@stockpilot.dev` | `Client!2026` |
+| Client (2nd) | `client2@stockpilot.dev` | `Client!2026` |
+
+The dataset is 520 products · 520 orders · 434 invoices · 8 warehouses · 25 suppliers ·
+1,002 stock allocations · 90 transfers · 3,213 stock movements, and it deliberately
+includes every edge case: 8 out-of-stock, 28 low-stock, orders that are pending /
+processing / confirmed / shipped / delivered / cancelled, payments that are unpaid /
+partial / paid / refunded, and invoices that are draft / sent / paid / overdue / cancelled.
+
+Sign in at `http://localhost:3000/login`. Role-specific surfaces to check after login:
+
+| Role | Try |
+|---|---|
+| Admin | `/` (attention dashboard), `/products`, `/orders`, `/invoices`, `/warehouses`, `/admin/products`, `/business-insights`, `/forecasting`, `/control-center` |
+| Warehouse | `/` , `/warehouses`, `/stock-transfers`, `/orders` (fulfillment scope) |
+| Supplier | `/supplier` (dashboard), `/products` (23 scoped products), `/orders` (46 orders), `/invoices` |
+| Client | `/client` (dashboard), `/marketplace`, `/orders`, `/invoices`, `/support-tickets` |
+
+> The login throttle allows **5 attempts per 60s per IP**; signing in as all five accounts
+> back-to-back will return `429` — wait a minute between batches. Rotate these passwords
+> before any non-local deployment.
 
 ---
 
@@ -170,7 +279,7 @@ The app uses **three required** variables (validated in `lib/env.ts`). Everythin
 
 | Variable              | Description                                       | Example for localhost                                                                                                 |
 | --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | MongoDB connection string                         | `mongodb://localhost:27017/stockly` or Atlas `mongodb+srv://user:pass@cluster.../stockly?retryWrites=true&w=majority` |
+| `DATABASE_URL`        | MongoDB connection string                         | `mongodb://localhost:27017/stockpilot` or Atlas `mongodb+srv://user:pass@cluster.../stockpilot?retryWrites=true&w=majority` |
 | `JWT_SECRET`          | Secret for signing JWT session cookies            | Any long random string (e.g. 32+ characters)                                                                          |
 | `NEXT_PUBLIC_API_URL` | Base URL of the app (emails, redirects, API base) | `http://localhost:3000` for local; your production URL in prod                                                        |
 
@@ -195,7 +304,7 @@ Uncomment and set in `.env` only if you need the feature:
 ### Minimal `.env` to run on localhost
 
 ```env
-DATABASE_URL="mongodb://localhost:27017/stockly"
+DATABASE_URL="mongodb://localhost:27017/stockpilot"
 JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
 NEXT_PUBLIC_API_URL="http://localhost:3000"
 ```
@@ -211,9 +320,9 @@ Below is the complete `.env.example` file so you can see exactly what to set. Co
 # =============================================================================
 
 # MongoDB connection string (local or Atlas).
-# Local: mongodb://localhost:27017/stockly
-# Atlas: mongodb+srv://USER:PASSWORD@cluster.mongodb.net/stockly?retryWrites=true&w=majority
-DATABASE_URL="mongodb://localhost:27017/stockly"
+# Local: mongodb://localhost:27017/stockpilot
+# Atlas: mongodb+srv://USER:PASSWORD@cluster.mongodb.net/stockpilot?retryWrites=true&w=majority
+DATABASE_URL="mongodb://localhost:27017/stockpilot"
 
 # Secret used to sign JWT session tokens. Use a long random string in production.
 JWT_SECRET="your_super_secret_jwt_key_here_change_this_in_production"
@@ -300,7 +409,7 @@ Or copy the project’s `.env.example` to `.env` and leave the optional variable
 
 ### Where to get values
 
-- **MongoDB:** Local: `mongodb://localhost:27017/stockly`. Cloud: [mongodb.com/atlas](https://www.mongodb.com/atlas)
+- **MongoDB:** Local: `mongodb://localhost:27017/stockpilot`. Cloud: [mongodb.com/atlas](https://www.mongodb.com/atlas)
 - **Stripe:** [dashboard.stripe.com](https://dashboard.stripe.com) → API keys; Webhooks → add endpoint for `/api/payments/webhook`
 - **Shippo:** [goshippo.com](https://goshippo.com) → API keys (use test key for development)
 - **Brevo:** [brevo.com](https://www.brevo.com) → API key and sender/admin email settings
@@ -314,8 +423,8 @@ Or copy the project’s `.env.example` to `.env` and leave the optional variable
 ## Project Structure
 
 ```bash
-stock-inventory/
-├── app/                    # Next.js App Router
+stockpilot/
+├── apps/web/app/           # Next.js App Router (@stockpilot/web)
 │   ├── layout.tsx          # Root layout, metadata, providers
 │   ├── page.tsx            # Home (store overview for admin)
 │   ├── login/              # Login page
@@ -475,7 +584,9 @@ All under `/api`, authenticated via cookie `session_id` (JWT) unless noted.
 - `GET /api/audit-logs` — Admin only
 - `GET|PATCH /api/system-config` — Admin only
 - `GET /api/forecasting`, `GET /api/ai/insights`
-- `GET /api/stock-allocations`
+- `GET|POST /api/stock-allocations` — Warehouse stock (+ `?summary=true`, `?warehouseId=`)
+- `GET|POST /api/stock-transfers` — Stock transfers (create reserves at source)
+- `GET /api/stock-transfers/[id]`, `POST /api/stock-transfers/[id]/complete`, `POST /api/stock-transfers/[id]/cancel`
 - `GET /api/health` — Health check
 - `GET /api/openapi` — OpenAPI spec
 
@@ -603,13 +714,13 @@ const form = useForm<FormData>({
 
 ## Conclusion
 
-Stockly is a full-stack example of a role-based inventory and order management app with Next.js 16, React 19, Prisma, and MongoDB. It demonstrates App Router structure, API route design, JWT auth, TanStack Query, and optional third-party integrations. Use this README as a map to the codebase, env setup, APIs, and components so you can run, extend, or reuse parts of the project in your own applications.
+Stockpilot is a full-stack example of a role-based inventory and order management app with Next.js 16, React 19, Prisma, and MongoDB. It demonstrates App Router structure, API route design, JWT auth, TanStack Query, and optional third-party integrations. Use this README as a map to the codebase, env setup, APIs, and components so you can run, extend, or reuse parts of the project in your own applications.
 
 ---
 
 ## Keywords
 
-stock inventory, inventory management, warehouse management, stock management system, Next.js, React, Prisma, MongoDB, product catalog, orders, invoices, suppliers, categories, JWT authentication, Stripe payments, Shippo shipping, Brevo email, role-based access, admin dashboard, client portal, supplier portal, TanStack Query, TypeScript, Tailwind CSS, shadcn/ui, Arnob Mahmud
+stock inventory, inventory management, warehouse management, stock management system, Next.js, React, Prisma, MongoDB, product catalog, orders, invoices, suppliers, categories, JWT authentication, Stripe payments, Shippo shipping, Brevo email, role-based access, admin dashboard, client portal, supplier portal, TanStack Query, TypeScript, Tailwind CSS, shadcn/ui
 
 ---
 
@@ -618,5 +729,3 @@ stock inventory, inventory management, warehouse management, stock management sy
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). Feel free to use, modify, and distribute the code as per the terms of the license.
 
 ---
-
-

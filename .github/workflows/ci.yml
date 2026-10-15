@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Phase gates (validate → typecheck → lint → tests → openapi → build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: mongodb://localhost:27017/stockpilot
+      JWT_SECRET: ci-only-secret-not-used-for-production-0123456789
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma validate (schema gate)
+        run: npx prisma validate --schema apps/web/prisma/schema.prisma
+
+      - name: Prisma generate
+        run: npx prisma generate --schema apps/web/prisma/schema.prisma
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Feature documentation audit (citations + score consistency)
+        run: npm run audit:docs
+
+      - name: Phase 2 operations workspace (command center, shortcuts, tokens, native theme)
+        run: npm run test:phase2
+
+      - name: Phase 3 data invariants
+        run: npm run test:phase3
+
+      - name: Phase 3.5 webhook/idempotency invariants
+        run: npm run test:phase35
+
+      - name: Phase 4 design system
+        run: npm run test:phase4
+
+      - name: Phase 5 auth
+        run: npm run test:phase5
+
+      - name: Phase 6 web shell
+        run: npm run test:phase6
+
+      - name: Phase 6.5 mobile/PWA invariants
+        run: npm run test:phase65
+
+      - name: Phase 7 products
+        run: npm run test:phase7
+
+      - name: Phase 8 warehouse domain gate
+        run: npm run test:phase8
+
+      - name: Phase 9 orders + invoices
+        run: npm run test:phase9
+
+      - name: Phase 10 payments + shipping + privacy
+        run: npm run test:phase10
+
+      - name: Phase 11 suppliers + clients
+        run: npm run test:phase11
+
+      - name: Phase 11.5 AI engine
+        run: npm run test:phase115
+
+      - name: Phase 12 analytics + forecasting
+        run: npm run test:phase12
+
+      - name: Phase 13 notifications + support
+        run: npm run test:phase13
+
+      - name: Phase 14 Control Center
+        run: npm run test:phase14
+
+      - name: Phase 15 testing depth
+        run: npm run test:phase15
+
+      - name: Phase 16 security
+        run: npm run test:phase16
+
+      - name: Phase 17 performance
+        run: npm run test:phase17
+
+      - name: Phase 18 observability
+        run: npm run test:phase18
+
+      - name: Phase 19 deploy
+        run: npm run test:phase19
+
+      - name: Phase 20 final verify
+        run: npm run test:phase20
+
+      - name: Mobile typecheck
+        run: npx tsc --noEmit -p apps/mobile/tsconfig.json
+
+      - name: PWA icon assets present
+        run: npm run generate:pwa-icons
+
+      - name: OpenAPI regen-check
+        run: npm run openapi:check
+
+      - name: Seed determinism (dry-run, no DB writes)
+        run: npm run seed
+
+      - name: Production build
+        run: npm run build
+
+      - name: Outbox worker one-shot (no events expected)
+        run: npm run outbox:worker -- --once
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build web image
+        run: docker build -f infrastructure/docker/Dockerfile.web -t stockpilot-web:ci .
+      - name: Smoke-test the image entrypoint
+        run: |
+          docker run --rm --entrypoint sh stockpilot-web:ci -c "test -f package.json && test -d apps/web"
